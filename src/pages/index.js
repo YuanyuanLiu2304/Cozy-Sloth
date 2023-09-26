@@ -4,4 +4,7 @@ export { default as Cart } from "./Cart";
 export { default as Checkout } from "./Checkout";
 export { default as ErrorPage } from "./ErrorPage";
 export { default as Products } from "./Products";
+export { default as PrivateRoute } from "./PrivateRoute";
 export { default as SingleProduct } from "./SingleProduct";
+export { default as Orders } from "./Orders";
+export { default as AuthWrapper } from "./AuthWrapper";

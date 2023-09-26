@@ -1,4 +1,5 @@
-import { FaShoppingCart, FaUserMinus, FaUserPlus } from "react-icons/fa";
+import { FaShoppingCart, FaCaretDown, FaUserPlus } from "react-icons/fa";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import styled from "styled-components";
 import { useCartContext } from "../context/cart_context";
@@ -6,7 +7,9 @@ import { useUserContext } from "../context/user_context";
 
 const CartButtons = () => {
   const { total_items } = useCartContext();
-  const { myUser } = useUserContext();
+  const { myUser, logout, loginWithRedirect } = useUserContext();
+  const [showDropdown, setShowDropdown] = useState(false);
+
   return (
     <Wrapper className="cart-btn-wrapper">
       <Link to="/cart" className="cart-btn">
@@ -17,11 +20,30 @@ const CartButtons = () => {
         </span>
       </Link>
       {myUser ? (
-        <button type="button" className="auth-btn">
-          Logout <FaUserMinus />
-        </button>
+        <div className="btn-container">
+          <button
+            type="button"
+            className="btn"
+            onClick={() => setShowDropdown(!showDropdown)}
+          >
+            {myUser?.nickname}
+            <FaCaretDown />
+          </button>
+
+          <div className={showDropdown ? "dropdown show-dropdown" : "dropdown"}>
+            <button
+              type="button"
+              className="auth-btn logout-btn"
+              onClick={() => {
+                logout({ returnTo: window.location.origin });
+              }}
+            >
+              Logout
+            </button>
+          </div>
+        </div>
       ) : (
-        <button type="button" className="auth-btn">
+        <button type="button" className="auth-btn" onClick={loginWithRedirect}>
           Login <FaUserPlus />
         </button>
       )}
@@ -80,6 +102,48 @@ const Wrapper = styled.div`
     svg {
       margin-left: 5px;
     }
+  }
+
+  .btn-container {
+    position: relative;
+    margin-left: 4rem;
+  }
+  .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0 0.5rem;
+    position: relative;
+    box-shadow: var(--light-shadow);
+  }
+
+  .dropdown {
+    position: absolute;
+    top: 40px;
+    left: 0;
+    width: 100%;
+    background: var(--clr-grey-9);
+    box-shadow: var(--light-shadow);
+    padding: 0.5rem;
+    text-align: center;
+    visibility: hidden;
+    border-radius: var(--radius);
+  }
+  .show-dropdown {
+    visibility: visible;
+  }
+
+  .logout-btn:hover {
+    color: var(--clr-primary-5);
+  }
+
+  .dropdown-btn {
+    background: transparent;
+    border-color: transparent;
+    color: var(--primary-500);
+    letter-spacing: var(--letterSpacing);
+    text-transform: capitalize;
+    cursor: pointer;
   }
 `;
 export default CartButtons;

@@ -1,31 +1,149 @@
-// import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import styled from "styled-components";
-// import { loadStripe } from "@stripe/stripe-js";
-// import {
-//   CardElement,
-//   useStripe,
-//   Elements,
-//   useElements,
-// } from "@stripe/react-stripe-js";
-// import axios from "axios";
-// import { useCartContext } from "../context/cart_context";
-// import { useUserContext } from "../context/user_context";
-// import { formatPrice } from "../utils/helpers";
-// import { useHistory } from "react-router-dom";
+import axios from "axios";
+import { loadStripe } from "@stripe/stripe-js";
+import { useCartContext } from "../context/cart_context";
+//import { useUserContext } from "../context/user_context";
+import { formatPrice } from "../utils/helpers";
+import { useNavigate, Link } from "react-router-dom";
+import {
+  CardElement,
+  useStripe,
+  Elements,
+  useElements,
+} from "@stripe/react-stripe-js";
+
+const promise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY);
 
 const CheckoutForm = () => {
-  return <h4>hello from Stripe Checkout </h4>;
+  const { carts, total_amount, shipping_fee, clearCart } = useCartContext();
+  const [succeeded, setSucceeded] = useState(false);
+  const [error, setError] = useState(null);
+  const [processing, setProcessing] = useState("");
+  const [disabled, setDisabled] = useState(true);
+  const [clientSecret, setClientSecret] = useState("");
+  const stripe = useStripe();
+  const elements = useElements();
+
+  const cardStyle = {
+    style: {
+      base: {
+        color: "#32325d",
+        fontFamily: "Arial, sans-serif",
+        fontSmoothing: "antialiased",
+        fontSize: "16px",
+        "::placeholder": {
+          color: "#32325d",
+        },
+      },
+      invalid: {
+        color: "#fa755a",
+        iconColor: "#fa755a",
+      },
+    },
+  };
+
+  const createPaymentIntent = async () => {
+    try {
+      const { data } = await axios.post(
+        "/.netlify/functions/create-payment-intent",
+        JSON.stringify({ carts, total_amount, shipping_fee })
+      );
+
+      setClientSecret(data.clientSecret);
+    } catch (error) {
+      console.log(error.response);
+    }
+  };
+
+  useEffect(() => {
+    createPaymentIntent();
+    // eslint-disable-next-line
+  }, []);
+
+  const handleChange = async (event) => {
+    setDisabled(event.empty);
+    setError(event.error ? event.error.message : "");
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setProcessing(true);
+    const payload = await stripe.confirmCardPayment(clientSecret, {
+      payment_method: {
+        card: elements.getElement(CardElement),
+      },
+    });
+    if (payload.error) {
+      setError(`Payment failed ${payload.error.message}`);
+      setProcessing(false);
+    } else {
+      setError(null);
+      setProcessing(false);
+      setSucceeded(true);
+      setTimeout(() => {
+        clearCart();
+      }, 10000);
+    }
+  };
+  return (
+    <div>
+      {succeeded ? (
+        <article>
+          <h2>Thank you</h2>
+          <h3>Your payment was successful!</h3>
+          <h4>
+            <Link to="/">Back to Home</Link>
+          </h4>
+        </article>
+      ) : (
+        <article>
+          <h5>Your total is {formatPrice(total_amount + shipping_fee)}</h5>
+          <p>The payment system is currently in test mode using Stripe</p>
+          <p>Please use the following test card number: 4242 4242 4242 4242</p>
+        </article>
+      )}
+      {!succeeded && (
+        <form id="payment-form" onSubmit={handleSubmit}>
+          <CardElement
+            id="card-element"
+            options={cardStyle}
+            onChange={handleChange}
+          />
+          <button
+            disabled={processing || disabled || succeeded}
+            type="submit"
+            id="submit"
+          >
+            <span className="button-text">
+              {processing ? <div className="spinner" id="spinner" /> : "Pay"}
+            </span>
+          </button>
+          {/* show error when processing the payment */}
+          {error && (
+            <div className="card-error" role="alert">
+              {error}
+            </div>
+          )}
+        </form>
+      )}
+    </div>
+  );
 };
 
 const StripeCheckout = () => {
   return (
     <Wrapper>
-      <CheckoutForm />
+      <Elements stripe={promise}>
+        <CheckoutForm />
+      </Elements>
     </Wrapper>
   );
 };
 
 const Wrapper = styled.section`
+  padding: 2rem;
+  text-align: center;
   form {
     width: 30vw;
     align-self: center;
@@ -46,18 +164,7 @@ const Wrapper = styled.section`
     background: white;
     box-sizing: border-box;
   }
-  .result-message {
-    line-height: 22px;
-    font-size: 16px;
-  }
-  .result-message a {
-    color: rgb(89, 111, 214);
-    font-weight: 600;
-    text-decoration: none;
-  }
-  .hidden {
-    display: none;
-  }
+
   #card-error {
     color: rgb(105, 115, 134);
     font-size: 16px;
@@ -79,6 +186,8 @@ const Wrapper = styled.section`
   }
   /* Buttons and links */
   button {
+    display: block;
+    width: 100%;
     background: #5469d4;
     font-family: Arial, sans-serif;
     color: #ffffff;
@@ -87,11 +196,42 @@ const Wrapper = styled.section`
     padding: 12px 16px;
     font-size: 16px;
     font-weight: 600;
+    margin-top: 1rem;
     cursor: pointer;
-    display: block;
     transition: all 0.2s ease;
     box-shadow: 0px 4px 5.5px 0px rgba(0, 0, 0, 0.07);
-    width: 100%;
+  }
+
+  h5 {
+    font-size: 1.5rem;
+    text-align: left;
+  }
+
+  h3 {
+    margin-top: 2rem;
+  }
+  h4 {
+    margin-top: 3rem;
+    text-align: center;
+    font-family: Arial, Helvetica, sans-serif;
+    a {
+      color: var(--clr-primary-7);
+      font-size: 1.25rem;
+      text-transform: capitalize;
+      letter-spacing: var(--spacing);
+      padding: 0.5rem;
+      border-bottom: 2px solid var(--clr-primary-7);
+      &:hover {
+        color: var(--clr-primary-5);
+      }
+    }
+  }
+
+  p {
+    text-align: left;
+    font-size: 1rem;
+    font-family: Arial, Helvetica, sans-serif;
+    margin-bottom: 0.75rem;
   }
   button:hover {
     filter: contrast(115%);
@@ -100,7 +240,7 @@ const Wrapper = styled.section`
     opacity: 0.5;
     cursor: default;
   }
-  /* spinner/processing state, errors */
+
   .spinner,
   .spinner:before,
   .spinner:after {
