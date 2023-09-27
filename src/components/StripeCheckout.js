@@ -83,7 +83,7 @@ const CheckoutForm = () => {
       setSucceeded(true);
       setTimeout(() => {
         clearCart();
-      }, 10000);
+      }, 5000);
     }
   };
   return (
